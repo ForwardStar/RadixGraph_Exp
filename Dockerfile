@@ -148,7 +148,7 @@ RUN git clone https://github.com/cwida/teseo && \
     ../configure --enable-optimize --disable-debug && \
     make -j && \
     cd ../../build && \
-    ../configure --enable-optimize --disable-debug --enable-mem-analysis --with-teseo=../teseo/build && \
+    ../configure --enable-optimize --disable-debug --enable-mem-analysis CXXFLAGS="-DDISABLE_NUMA_ASSERT=1" --with-teseo=../teseo/build && \
     make clean && make -j && \
     mv gfe_driver gfe_driver_teseo && \
     mv Makefile Makefile_teseo

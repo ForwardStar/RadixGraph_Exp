@@ -106,19 +106,3 @@ sh scripts/run_analytics.sh gtx 64
 # (3) Recover
 cd /workspace/gfe_driver/build
 mv gfe_driver gfe_driver_gtx && mv Makefile Makefile_gtx
-
-# ----------------------------
-# Summarize data
-# ----------------------------
-cd /workspace/gfe_driver
-python3 scripts/data_to_csv.py
-
-# ----------------------------
-# Plot figures
-# ----------------------------
-cd /workspace/gfe_driver
-python3 scripts/plot_all_1.py
-python3 scripts/plot_all_2.py
-python3 scripts/plot_all_3.py
-printf "concurrent-1-hop\nconcurrent-2-hop\n" > concurrent_results.txt
-python3 scripts/plot_concurrent.py < ./concurrent_results.txt
