@@ -218,6 +218,137 @@ RUN sed -i \
   gfe_driver/configuration.hpp
 
 # ----------------------------
+# For the rest of experiments, disable twitter dataset
+# ----------------------------
+WORKDIR /workspace/gfe_driver
+RUN sed -i '46s/^/# /' run_random.sh
+RUN sed -i '46s/^/# /' run_vertex.sh
+RUN sed -i '46s/^/# /' run_analytics.sh
+
+# ----------------------------
+# Build Teseo
+# ----------------------------
+WORKDIR /workspace/gfe_driver
+RUN git clone https://github.com/cwida/teseo && \
+    cd teseo && \
+    autoreconf -iv && \
+    mkdir build && \
+    cd build && \
+    ../configure --enable-optimize --disable-debug && \
+    make -j && \
+    cd ../../build && \
+    ../configure --enable-optimize --disable-debug --enable-mem-analysis --with-teseo=../teseo/build && \
+    make clean && make -j
+
+# ----------------------------
+# Run Teseo experiments
+# ----------------------------
+# (1) Insertions, Deletions and Memory Consumptions
+WORKDIR /workspace/gfe_driver
+RUN sh scripts/run_random.sh teseo 64
+RUN sh scripts/run_vertex.sh teseo 64
+
+# (2) Mixed updates and delete-only
+WORKDIR /workspace/gfe_driver
+RUN sh scripts/run_mixed.sh teseo 64
+RUN sh scripts/run_delete_memfp.sh teseo 2
+
+# (3) Analytics
+WORKDIR /workspace/gfe_driver
+RUN sh scripts/run_analytics.sh teseo 64
+
+# (4) Concurrent reads and writes
+WORKDIR /workspace/gfe_driver
+RUN sed -i \
+  -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 1/' \
+  -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 0/' \
+  gfe_driver/configuration.hpp
+WORKDIR /workspace/gfe_driver/build
+RUN make -j
+WORKDIR /workspace/gfe_driver
+RUN sh scripts/run_concurrent.sh teseo 64 && \
+  mv results/teseo/concurrent results/teseo/concurrent-1-hop
+RUN sed -i \
+  -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 0/' \
+  -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 1/' \
+  gfe_driver/configuration.hpp
+WORKDIR /workspace/gfe_driver/build
+RUN make -j
+WORKDIR /workspace/gfe_driver
+RUN sh scripts/run_concurrent.sh teseo 64 && \
+  mv results/teseo/concurrent results/teseo/concurrent-2-hop
+RUN sed -i \
+  -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 1/' \
+  -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 1/' \
+  gfe_driver/configuration.hpp
+RUN sed -i \
+  -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 1/' \
+  -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 1/' \
+  gfe_driver/configuration.hpp
+
+# ----------------------------
+# Build Sortledton
+# ----------------------------
+WORKDIR /workspace/gfe_driver
+RUN git clone https://gitlab.db.in.tum.de/per.fuchs/sortledton && \
+    cd sortledton && \
+    git reset --hard && \
+    sed -i '11d' CMakeLists.txt && \
+    mkdir build && \
+    cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release .. && \
+    make sortledton && \
+    cd ../../build && \
+    ../configure --enable-optimize --disable-debug --enable-mem-analysis --with-sortledton=../sortledton/build/ && \
+    make clean && make -j
+
+# ----------------------------
+# Run Sortledton experiments
+# ----------------------------
+# (1) Insertions, Deletions and Memory Consumptions
+WORKDIR /workspace/gfe_driver
+RUN sh scripts/run_random.sh sortledton 64
+RUN sh scripts/run_vertex.sh sortledton 64
+
+# (2) Mixed updates and delete-only
+WORKDIR /workspace/gfe_driver
+RUN sh scripts/run_mixed.sh sortledton 64
+RUN sh scripts/run_delete_memfp.sh sortledton 2
+
+# (3) Analytics
+WORKDIR /workspace/gfe_driver
+RUN sh scripts/run_analytics.sh sortledton 64
+
+# (4) Concurrent reads and writes
+WORKDIR /workspace/gfe_driver
+RUN sed -i \
+    -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 1/' \
+    -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 0/' \
+    gfe_driver/configuration.hpp
+WORKDIR /workspace/gfe_driver/build
+RUN make -j
+WORKDIR /workspace/gfe_driver
+RUN sh scripts/run_concurrent.sh sortledton 64 && \
+    mv results/sortledton/concurrent results/sortledton/concurrent-1-hop
+RUN sed -i \
+    -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 0/' \
+    -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 1/' \
+    gfe_driver/configuration.hpp
+WORKDIR /workspace/gfe_driver/build
+RUN make -j
+WORKDIR /workspace/gfe_driver
+RUN sh scripts/run_concurrent.sh sortledton 64 && \
+    mv results/sortledton/concurrent results/sortledton/concurrent-2-hop
+RUN sed -i \
+    -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 1/' \
+    -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 1/' \
+    gfe_driver/configuration.hpp
+RUN sed -i \
+    -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 1/' \
+    -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 1/' \
+    gfe_driver/configuration.hpp
+
+# ----------------------------
 # Default shell
 # ----------------------------
 WORKDIR /workspace/gfe_driver

@@ -1,0 +1,36 @@
+name: Docker (minimal)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  docker-minimal:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build minimal Docker image
+        run: |
+          docker build \
+            -f Dockerfile_minimal \
+            -t radixgraph:minimal .
+
+      - name: Run experiments
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/figures:/workspace/gfe_driver/figures \
+            radixgraph:minimal
+            
+      - name: Upload figures
+        uses: actions/upload-artifact@v4
+        with:
+          name: radixgraph-figures
+          path: figures/
