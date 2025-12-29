@@ -17,23 +17,21 @@ To reproduce the full experiments, following are required:
 
 ## Reproduce RadixGraph with Docker
 
-There are two images you can build: ``radixgraph:minimal`` and ``radixgraph:full``. The ``minimal`` image only tests the LiveJournal and dota-league dataset with partial experiments, while the ``full`` image contains all datasets and all experiments.
-
-Build:
-```bash
-docker build -f Dockerfile_minimal -t radixgraph:minimal .
-docker build -f Dockerfile_full -t radixgraph:full .
+Firstly build the image:
+```sh
+docker build -t radixgraph-exp .
 ```
 
-Run whichever image you want:
-```bash
-docker run -it radixgraph:minimal
-docker run -it radixgraph:full
+Run full experiments:
+```sh
+docker run --rm -it radixgraph-exp ./run.sh
 ```
 
 ## Reproduce RadixGraph with Jupyter Notebook in a step-by-step manner
 
 You can also reproduce the experiments with ``reproduce_radixgraph.ipynb`` in a Jupyter Notebook, which gives more detailed instructions and explanations.
+
+It also provides a minimal example of testing on LiveJournal dataset.
 
 ## Reproduce RadixGraph manually
 
