@@ -20,3 +20,7 @@ jobs:
       - name: Build Docker image minimal example
         run: |
           docker build -t radixgraph-exp ./minimal-example
+      
+      - name: Run experiments with docker image
+        run: |
+          docker run --rm -it radixgraph-exp ./minimal-example/run.sh

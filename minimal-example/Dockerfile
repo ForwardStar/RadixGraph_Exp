@@ -67,11 +67,8 @@ RUN g++ scripts/remove_duplicate_edges.cpp -O3 -o remove_duplicate_edges && \
 # Generate property files
 # ----------------------------
 WORKDIR /workspace/gfe_driver
-RUN echo "=== datasets after remove_duplicate_edges ===" && \
-    ls -lah datasets && \
-    g++ scripts/generate_property_files.cpp -o generate_property_files -O3 && \
+RUN g++ scripts/generate_property_files.cpp -o generate_property_files -O3 && \
     ./generate_property_files datasets/com-lj.ungraph.el && \
-    echo "=== datasets after generate_property_files ===" && \
     ls -lah datasets
 
 # ----------------------------
@@ -86,7 +83,6 @@ RUN git clone https://github.com/MordorsElite/graphlog-base.git && \
     cmake ../ -DCMAKE_BUILD_TYPE=Release && \
     make -j
 WORKDIR /workspace/gfe_driver/graphlog-base/build
-RUN ./graphlog -a 1 -e 1 -v 1 ../../datasets/com-lj.ungraph.properties ../../com-lj.ungraph.graphlog && \
 
 # ----------------------------
 # Configure GFE Driver
