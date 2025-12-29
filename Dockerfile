@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
     git \
-    libnuma-dev \
+    libnuma-dev numactl \
     libevent-dev \
     libboost-all-dev \
     zlib1g-dev \
@@ -23,6 +23,10 @@ RUN apt-get update && apt-get install -y \
     autoconf automake \
     python3 python3-pip python3-dev \
     wget curl ca-certificates
+
+# Check for NUMA availability
+RUN numactl --hardware | grep -q "available:" || \
+    (echo "Error: No NUMA available on this system!" >&2 && exit 1)
 
 # Make gcc-11 / g++-11 default (matches notebook)
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100 && \
@@ -148,7 +152,7 @@ RUN git clone https://github.com/cwida/teseo && \
     ../configure --enable-optimize --disable-debug && \
     make -j && \
     cd ../../build && \
-    ../configure --enable-optimize --disable-debug --enable-mem-analysis CXXFLAGS="-DDISABLE_NUMA_ASSERT=1" --with-teseo=../teseo/build && \
+    ../configure --enable-optimize --disable-debug --enable-mem-analysis --with-teseo=../teseo/build && \
     make clean && make -j && \
     mv gfe_driver gfe_driver_teseo && \
     mv Makefile Makefile_teseo

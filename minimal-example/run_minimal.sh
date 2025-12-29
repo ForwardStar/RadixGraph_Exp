@@ -50,21 +50,25 @@ sed -i '46s/^/# /' run_analytics.sh
 # Run Teseo experiments
 # ----------------------------
 cd /workspace/gfe_driver/build
-mv gfe_driver_teseo gfe_driver
-mv Makefile_teseo Makefile
+if [ -e "gfe_driver_teseo" ]; then
+    mv gfe_driver_teseo gfe_driver
+    mv Makefile_teseo Makefile
 
-# (1) Insertions, Deletions and Memory Consumptions
-cd /workspace/gfe_driver
-sh scripts/run_random.sh teseo.13 64
-sh scripts/run_vertex.sh teseo.13 64
+    # (1) Insertions, Deletions and Memory Consumptions
+    cd /workspace/gfe_driver
+    sh scripts/run_random.sh teseo.13 64
+    sh scripts/run_vertex.sh teseo.13 64
 
-# (2) Analytics
-cd /workspace/gfe_driver
-sh scripts/run_analytics.sh teseo.13 64
+    # (2) Analytics
+    cd /workspace/gfe_driver
+    sh scripts/run_analytics.sh teseo.13 64
 
-# (3) Recover
-cd /workspace/gfe_driver/build
-mv gfe_driver gfe_driver_teseo && mv Makefile Makefile_teseo
+    # (3) Recover
+    cd /workspace/gfe_driver/build
+    mv gfe_driver gfe_driver_teseo && mv Makefile Makefile_teseo
+else
+    echo "Teseo is not built. Skipped"
+fi
 
 # ----------------------------
 # Run Sortledton experiments

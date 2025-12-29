@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
     git \
-    libnuma-dev \
+    libnuma-dev numactl \
     libevent-dev \
     libboost-all-dev \
     zlib1g-dev \
@@ -23,6 +23,16 @@ RUN apt-get update && apt-get install -y \
     autoconf automake \
     python3 python3-pip python3-dev \
     wget curl ca-certificates
+
+# Check for NUMA availability
+RUN if numactl --hardware | grep -q "available:"; then \
+        echo "NUMA detected"; \
+        export HAS_NUMA=1; \
+    else \
+        echo "No NUMA available, will skip Teseo build"; \
+        export HAS_NUMA=0; \
+    fi && \
+    echo "HAS_NUMA=$HAS_NUMA" >> /etc/environment
 
 # Make gcc-11 / g++-11 default (matches notebook)
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100 && \
@@ -134,18 +144,23 @@ RUN cd build && \
 # Build GFE Driver for Teseo
 # ----------------------------
 WORKDIR /workspace/gfe_driver
-RUN git clone https://github.com/cwida/teseo && \
-    cd teseo && \
-    autoreconf -iv && \
-    mkdir build && \
-    cd build && \
-    ../configure --enable-optimize --disable-debug && \
-    make -j && \
-    cd ../../build && \
-    ../configure --enable-optimize --disable-debug --enable-mem-analysis CXXFLAGS="-DDISABLE_NUMA_ASSERT=1" --with-teseo=../teseo/build && \
-    make clean && make -j && \
-    mv gfe_driver gfe_driver_teseo && \
-    mv Makefile Makefile_teseo
+RUN /bin/bash 'source /etc/environment && \
+    if [ "$HAS_NUMA" -eq 1 ]; then \ 
+        git clone https://github.com/cwida/teseo && \
+        cd teseo && \
+        autoreconf -iv && \
+        mkdir build && \
+        cd build && \
+        ../configure --enable-optimize --disable-debug && \
+        make -j && \
+        cd ../../build && \
+        ../configure --enable-optimize --disable-debug --enable-mem-analysis --with-teseo=../teseo/build && \
+        make clean && make -j && \
+        mv gfe_driver gfe_driver_teseo && \
+        mv Makefile Makefile_teseo \
+    else \
+        echo "Skipping Teseo build due to no NUMA"; \
+    fi'
 
 # ----------------------------
 # Build GFE Driver for Sortledton
