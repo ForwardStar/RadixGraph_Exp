@@ -49,14 +49,14 @@ RUN git clone https://github.com/ForwardStar/gfe_driver.git
 # Comment this out if you want to prepare datasets manually at runtime.
 WORKDIR /workspace/gfe_driver
 RUN python3 downloader.py --download-lj-only && \
-    echo "=== datasets after download ===" && \
-    ls -lah datasets && \
     sed -i -E 's/[[:space:]]+/ /g' datasets/*.txt && \
     mv datasets/com-lj.ungraph.txt datasets/com-lj.ungraph.el
 
 # Remove duplicate edges (as in notebook)
 WORKDIR /workspace/gfe_driver
-RUN g++ scripts/remove_duplicate_edges.cpp -O3 -o remove_duplicate_edges && \
+RUN echo "=== datasets after download ===" && \
+    ls -lah datasets && \ 
+    g++ scripts/remove_duplicate_edges.cpp -O3 -o remove_duplicate_edges && \
     ./remove_duplicate_edges ./datasets/com-lj.ungraph.el
 
 # ----------------------------
