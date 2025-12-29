@@ -1,6 +1,6 @@
 # RadixGraph_Exp
 
-This is the repository for reproducing experimental results in the paper: [RadixGraph: A Fast, Space-Optimized Data Structure for Dynamic Graph Storage]() (accpeted by SIGMOD 2026).
+This is the repository for reproducing experimental results in the paper: [RadixGraph: A Fast, Space-Optimized Data Structure for Dynamic Graph Storage]() (accepted by SIGMOD 2026).
 
 RadixGraph repo: [https://github.com/ForwardStar/RadixGraph](https://github.com/ForwardStar/RadixGraph)
 
