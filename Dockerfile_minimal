@@ -60,11 +60,13 @@ WORKDIR /workspace/gfe_driver
 # ----------------------------
 # Dataset preparation
 # ----------------------------
-# Full dataset pipeline (very slow).
-# Comment this out if you want to prepare datasets manually at runtime.
+# Download LiveJournal and dota-league
 RUN python3 downloader.py --download-lj-only && \
   sed -i -E 's/[[:space:]]+/ /g' datasets/*.txt && \
   mv datasets/com-lj.ungraph.txt datasets/com-lj.ungraph.el
+WORKDIR /workspace/gfe_driver/datasets
+RUN wget https://datasets.ldbcouncil.org/graphalytics/dota-league.tar.zst
+RUN tar -I zstd -xvf dota-league.tar.zst
 
 # ----------------------------
 # Configure GFE Driver
@@ -82,11 +84,26 @@ RUN g++ scripts/create_vertex_ops.cpp -o create_vertex_ops -O3 && \
     ./create_vertex_ops
 
 # ----------------------------
+# Generate graphlog
+# ----------------------------
+WORKDIR /workspace/gfe_driver
+RUN git clone https://github.com/MordorsElite/graphlog-base.git && \
+    cd graphlog-base && \
+    git submodule update --init && \
+    mkdir build && \
+    cd build && \
+    cmake ../ -DCMAKE_BUILD_TYPE=Release && \
+    make -j
+WORKDIR /workspace/gfe_driver/graphlog-base/build
+    ./graphlog -a 10 -e 1 -v 1 ../../datasets/dota-league.properties ../../dota-league.graphlog
+
+# ----------------------------
 # Generate property files
 # ----------------------------
 WORKDIR /workspace/gfe_driver
 RUN g++ scripts/generate_property_files.cpp -o generate_property_files -O3 && \
-    ./generate_property_files datasets/com-lj.ungraph.el
+    ./generate_property_files datasets/com-lj.ungraph.el && \
+    ./generate_property_files datasets/dota-league.e
 
 # ----------------------------
 # Build RadixGraph
@@ -109,16 +126,11 @@ WORKDIR /workspace/gfe_driver
 RUN sh scripts/run_random.sh radixgraph 64
 RUN sh scripts/run_vertex.sh radixgraph 64
 
-# (2) Mixed updates and delete-only
-WORKDIR /workspace/gfe_driver
-RUN sh scripts/run_mixed.sh radixgraph 64
-RUN sh scripts/run_delete_memfp.sh radixgraph 2
-
-# (3) Analytics
+# (2) Analytics
 WORKDIR /workspace/gfe_driver
 RUN sh scripts/run_analytics.sh radixgraph 64
 
-# (4) Concurrent reads and writes
+# (3) Concurrent reads and writes
 WORKDIR /workspace/gfe_driver
 RUN sed -i \
   -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 1/' \
@@ -160,8 +172,8 @@ WORKDIR /workspace/gfe_driver
 RUN wget -c https://github.com/Stardust-SJF/gfe_driver/releases/download/v2.0.0/libBVGT_stable.a && \
     mv libBVGT_stable.a libBVGT.a
 RUN cd build && \
-    ../configure --enable-optimize --enable-mem-analysis --disable-debug --with-bvgt=../
-RUN make clean && make -j
+    ../configure --enable-optimize --enable-mem-analysis --disable-debug --with-bvgt=../ && \
+    make clean && make -j
 
 # ----------------------------
 # Run Spruce experiments
@@ -171,43 +183,9 @@ WORKDIR /workspace/gfe_driver
 RUN sh scripts/run_random.sh bvgt 64
 RUN sh scripts/run_vertex.sh bvgt 64
 
-# (2) Mixed updates and delete-only
-WORKDIR /workspace/gfe_driver
-RUN sh scripts/run_mixed.sh bvgt 64
-RUN sh scripts/run_delete_memfp.sh bvgt 2
-
-# (3) Analytics
+# (2) Analytics
 WORKDIR /workspace/gfe_driver
 RUN sh scripts/run_analytics.sh bvgt 64
-
-# (4) Concurrent reads and writes
-WORKDIR /workspace/gfe_driver
-RUN sed -i \
-  -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 1/' \
-  -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 0/' \
-  configuration.hpp
-WORKDIR /workspace/gfe_driver/build
-RUN make -j
-WORKDIR /workspace/gfe_driver
-RUN sh scripts/run_concurrent.sh bvgt 64 && \
-  mv results/bvgt/concurrent results/bvgt/concurrent-1-hop
-RUN sed -i \
-  -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 0/' \
-  -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 1/' \
-  configuration.hpp
-WORKDIR /workspace/gfe_driver/build
-RUN make -j
-WORKDIR /workspace/gfe_driver
-RUN sh scripts/run_concurrent.sh bvgt 64 && \
-  mv results/bvgt/concurrent results/bvgt/concurrent-2-hop
-RUN sed -i \
-  -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 1/' \
-  -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 1/' \
-  configuration.hpp
-RUN sed -i \
-  -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 1/' \
-  -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 1/' \
-  configuration.hpp
 
 # ----------------------------
 # For the rest of experiments, disable twitter dataset
@@ -240,43 +218,9 @@ WORKDIR /workspace/gfe_driver
 RUN sh scripts/run_random.sh teseo 64
 RUN sh scripts/run_vertex.sh teseo 64
 
-# (2) Mixed updates and delete-only
-WORKDIR /workspace/gfe_driver
-RUN sh scripts/run_mixed.sh teseo 64
-RUN sh scripts/run_delete_memfp.sh teseo 2
-
-# (3) Analytics
+# (2) Analytics
 WORKDIR /workspace/gfe_driver
 RUN sh scripts/run_analytics.sh teseo 64
-
-# (4) Concurrent reads and writes
-WORKDIR /workspace/gfe_driver
-RUN sed -i \
-  -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 1/' \
-  -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 0/' \
-  configuration.hpp
-WORKDIR /workspace/gfe_driver/build
-RUN make -j
-WORKDIR /workspace/gfe_driver
-RUN sh scripts/run_concurrent.sh teseo 64 && \
-  mv results/teseo/concurrent results/teseo/concurrent-1-hop
-RUN sed -i \
-  -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 0/' \
-  -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 1/' \
-  configuration.hpp
-WORKDIR /workspace/gfe_driver/build
-RUN make -j
-WORKDIR /workspace/gfe_driver
-RUN sh scripts/run_concurrent.sh teseo 64 && \
-  mv results/teseo/concurrent results/teseo/concurrent-2-hop
-RUN sed -i \
-  -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 1/' \
-  -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 1/' \
-  configuration.hpp
-RUN sed -i \
-  -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 1/' \
-  -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 1/' \
-  configuration.hpp
 
 # ----------------------------
 # Build Sortledton
@@ -302,44 +246,10 @@ WORKDIR /workspace/gfe_driver
 RUN sh scripts/run_random.sh sortledton 64
 RUN sh scripts/run_vertex.sh sortledton 64
 
-# (2) Mixed updates and delete-only
-WORKDIR /workspace/gfe_driver
-RUN sh scripts/run_mixed.sh sortledton 64
-RUN sh scripts/run_delete_memfp.sh sortledton 2
-
-# (3) Analytics
+# (2) Analytics
 WORKDIR /workspace/gfe_driver
 RUN sh scripts/run_analytics.sh sortledton 64
 
-# (4) Concurrent reads and writes
-WORKDIR /workspace/gfe_driver
-RUN sed -i \
-    -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 1/' \
-    -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 0/' \
-    configuration.hpp
-WORKDIR /workspace/gfe_driver/build
-RUN make -j
-WORKDIR /workspace/gfe_driver
-RUN sh scripts/run_concurrent.sh sortledton 64 && \
-    mv results/sortledton/concurrent results/sortledton/concurrent-1-hop
-RUN sed -i \
-    -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 0/' \
-    -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 1/' \
-    configuration.hpp
-WORKDIR /workspace/gfe_driver/build
-RUN make -j
-WORKDIR /workspace/gfe_driver
-RUN sh scripts/run_concurrent.sh sortledton 64 && \
-    mv results/sortledton/concurrent results/sortledton/concurrent-2-hop
-RUN sed -i \
-    -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 1/' \
-    -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 1/' \
-    configuration.hpp
-RUN sed -i \
-    -e 's/^#define[[:space:]]\+RUN_GET_NEIGHBORS[[:space:]]\+[01]/#define RUN_GET_NEIGHBORS 1/' \
-    -e 's/^#define[[:space:]]\+RUN_TWO_HOP_NEIGHBORS[[:space:]]\+[01]/#define RUN_TWO_HOP_NEIGHBORS 1/' \
-    configuration.hpp
-  
 # ----------------------------
 # Build GTX
 # ----------------------------
@@ -365,18 +275,12 @@ RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./GTX-SIGMOD2025/build
 RUN sh scripts/run_random.sh gtx 64
 RUN sh scripts/run_vertex.sh gtx 64
 
-# (2) Mixed updates and delete-only
-WORKDIR /workspace/gfe_driver
-RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./GTX-SIGMOD2025/build
-RUN sh scripts/run_mixed.sh gtx 64
-RUN sh scripts/run_delete_memfp.sh gtx 2
-
-# (3) Analytics
+# (2) Analytics
 WORKDIR /workspace/gfe_driver
 RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./GTX-SIGMOD2025/build
 RUN sh scripts/run_analytics.sh gtx 64
 
-# (4) Concurrent reads and writes
+# (3) Concurrent reads and writes
 WORKDIR /workspace/gfe_driver
 RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./GTX-SIGMOD2025/build
 RUN sed -i \

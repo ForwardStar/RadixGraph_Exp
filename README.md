@@ -17,7 +17,7 @@ To reproduce the full experiments, following are required:
 
 ## Reproduce RadixGraph with Docker
 
-There are two images you can build: ``radixgraph:minimal`` and ``radixgraph:full``. The ``minimal`` image only tests the LiveJournal dataset experiments, while the ``full`` image contains all datasets.
+There are two images you can build: ``radixgraph:minimal`` and ``radixgraph:full``. The ``minimal`` image only tests the LiveJournal and dota-league dataset with partial experiments, while the ``full`` image contains all datasets and all experiments.
 
 Build:
 ```bash
