@@ -52,12 +52,10 @@ RUN python3 downloader.py --download-lj-only && \
     sed -i -E 's/[[:space:]]+/ /g' datasets/*.txt && \
     mv datasets/com-lj.ungraph.txt datasets/com-lj.ungraph.el
 
-# Remove duplicate edges (as in notebook)
+# Create vertex ops (as in notebook)
 WORKDIR /workspace/gfe_driver
-RUN echo "=== datasets after download ===" && \
-    ls -lah datasets && \ 
-    g++ scripts/remove_duplicate_edges.cpp -O3 -o remove_duplicate_edges && \
-    ./remove_duplicate_edges ./datasets/com-lj.ungraph.el
+RUN g++ scripts/create_vertex_ops.cpp -o create_vertex_ops -O3 && \
+    ./create_vertex_ops
 
 # ----------------------------
 # Generate property files

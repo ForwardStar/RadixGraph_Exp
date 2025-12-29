@@ -50,6 +50,11 @@ RUN git clone https://github.com/ForwardStar/gfe_driver.git
 WORKDIR /workspace/gfe_driver
 RUN bash scripts/prepare_datasets.sh
 
+# Create vertex ops (as in notebook)
+WORKDIR /workspace/gfe_driver
+RUN g++ scripts/create_vertex_ops.cpp -o create_vertex_ops -O3 && \
+    ./create_vertex_ops
+
 # Remove duplicate edges (as in notebook)
 WORKDIR /workspace/gfe_driver
 RUN g++ scripts/remove_duplicate_edges.cpp -O3 -o remove_duplicate_edges && \
