@@ -144,23 +144,23 @@ RUN cd build && \
 # Build GFE Driver for Teseo
 # ----------------------------
 WORKDIR /workspace/gfe_driver
-RUN /bin/bash 'source /etc/environment && \
-    if [ "$HAS_NUMA" -eq 1 ]; then \ 
+RUN /bin/bash -c " \
+    source /etc/environment && \
+    if [ \"\$HAS_NUMA\" -eq 1 ]; then \
         git clone https://github.com/cwida/teseo && \
         cd teseo && \
         autoreconf -iv && \
-        mkdir build && \
-        cd build && \
+        mkdir build && cd build && \
         ../configure --enable-optimize --disable-debug && \
         make -j && \
         cd ../../build && \
         ../configure --enable-optimize --disable-debug --enable-mem-analysis --with-teseo=../teseo/build && \
         make clean && make -j && \
         mv gfe_driver gfe_driver_teseo && \
-        mv Makefile Makefile_teseo \
+        mv Makefile Makefile_teseo; \
     else \
-        echo "Skipping Teseo build due to no NUMA"; \
-    fi'
+        echo 'Skipping Teseo build due to no NUMA'; \
+    fi"
 
 # ----------------------------
 # Build GFE Driver for Sortledton
