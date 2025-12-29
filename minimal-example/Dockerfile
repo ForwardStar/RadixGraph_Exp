@@ -49,6 +49,7 @@ RUN git clone https://github.com/ForwardStar/gfe_driver.git
 # Comment this out if you want to prepare datasets manually at runtime.
 WORKDIR /workspace/gfe_driver
 RUN python3 downloader.py --download-lj-only && \
+    sed -i '/^#/d' datasets/*.txt && \
     sed -i -E 's/[[:space:]]+/ /g' datasets/*.txt && \
     mv datasets/com-lj.ungraph.txt datasets/com-lj.ungraph.el
 
@@ -56,6 +57,11 @@ RUN python3 downloader.py --download-lj-only && \
 WORKDIR /workspace/gfe_driver
 RUN g++ scripts/create_vertex_ops.cpp -o create_vertex_ops -O3 && \
     ./create_vertex_ops
+
+# Remove duplicate edges (as in notebook)
+WORKDIR /workspace/gfe_driver
+RUN g++ scripts/remove_duplicate_edges.cpp -O3 -o remove_duplicate_edges && \
+    ./remove_duplicate_edges ./datasets/com-lj.ungraph.el
 
 # ----------------------------
 # Generate property files
